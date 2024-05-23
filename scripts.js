@@ -1,83 +1,121 @@
-const recipesContainer = document.getElementById("recipe-container");
-const howManyInput = document.getElementById("how-many-input");
-const recipesButton = document.getElementById("getRecipes");
+$(document).ready(function () {
+  const recipesContainer = $("#recipe-container");
+  const howManyInput = $("#how-many-input");
+  const recipesButton = $("#getRecipes");
 
-async function displayRandomMeals(count) {
-  recipesContainer.innerHTML = "";
-  for (let i = 0; i < count; i++) {
-    const response = await fetch(
-      "https://www.themealdb.com/api/json/v1/1/random.php"
-    );
-    const data = await response.json();
-    const meal = data.meals[0];
+  function displayRandomMeals(count) {
+    recipesContainer.empty();
+    for (let i = 0; i < count; i++) {
+      $.ajax({
+        url: "https://www.themealdb.com/api/json/v1/1/random.php",
+        method: "GET",
+        success: function (data) {
+          const meal = data.meals[0];
 
-    const mealName = document.createElement("h2");
-    mealName.textContent = meal.strMeal;
+          const ingredients = []
+          for(let i = 1; i<= 20; i++) {
+           const ingredient =  meal[`strIngredient${i}`]
+           if(ingredient) {
+            ingredients.push(ingredient)
+           }
+          }
 
-    const mealImage = document.createElement("img");
-    mealImage.classList.add("meal-image");
-    mealImage.src = meal.strMealThumb + "/preview";
-    mealImage.alt = meal.strMeal;
+          const measures = []
+          for(let j = 1; j<=20; j++) {
+            const measure = meal[`strMeasure${j}`]
+            if(measure){
+              measures.push(measure)
+            }
+          }
 
-    const button = document.createElement("button");
-    button.textContent = "Click here for recipe!";
-    button.classList.add("get-recipe");
-    button.setAttribute("linkTo", `${meal.strInstructions}`);
+          const ingredientsWithMeasure = [];
 
-    const mealContainer = document.createElement("div");
-    mealContainer.classList.add("meal-container");
-    mealContainer.appendChild(mealName);
-    mealContainer.appendChild(mealImage);
-    mealContainer.appendChild(button);
+          // Combine each ingredient with its corresponding measure
+          for (let i = 0; i < ingredients.length; i++) {
+              const ingredient = ingredients[i];
+              const measure = measures[i];
+              const ingredientWithMeasure = `${ingredient} - ${measure} <br>`;
+              ingredientsWithMeasure.push(ingredientWithMeasure);
+          }
+          
+          // Create an unordered list element
+          const ingredientsList = $("<ul>").addClass("ingredients-list");
+          
+          // Append each ingredient with its measure as a list item
+          ingredientsWithMeasure.forEach(ingredient => {
+              const listItem = $("<li>").text(ingredient);
+              ingredientsList.append(listItem);
+          });
 
-    recipesContainer.appendChild(mealContainer);
-  }
-}
+          const mealName = $("<h2>").text(meal.strMeal);
 
-recipesButton.addEventListener("click", function () {
-  const howMany = howManyInput.value;
-  displayRandomMeals(howMany);
-});
+          const mealImage = $("<img>")
+            .addClass("meal-image card-img-top")
+            .attr("src", meal.strMealThumb + "/preview")
+            .attr("alt", meal.strMeal);
 
-// Function to handle displaying recipe instructions and close button
-function getRecipe() {
-  document.addEventListener("click", function (event) {
-    if (event.target.classList.contains("get-recipe")) {
-      const button = event.target;
-      button.style.display = "none";
+          const button = $("<button>")
+            .text("Click here for recipe!")
+            .addClass("get-recipe")
+            .attr("linkTo", meal.strInstructions)
+            .attr("strTo", ingredients)
+            .attr("measures", measures);
 
-      const mealInstructions = document.createElement("p");
-      mealInstructions.classList.add("meal-instructions");
-      mealInstructions.textContent = button.getAttribute("linkTo");
+          const mealContainer = $("<div>")
+            .addClass("meal-container card")
+            .append(mealName, mealImage, button, ingredientsWithMeasure);
 
-      const closeButton = document.createElement("button");
-      closeButton.id = "close-button";
-      closeButton.textContent = "Close";
-
-      const mealContainer = button.closest(".meal-container");
-      mealContainer.appendChild(mealInstructions);
-      mealContainer.appendChild(closeButton);
+          recipesContainer.append(mealContainer);
+        },
+      });
     }
+  }
+
+  recipesButton.on("click", function () {
+    const howMany = howManyInput.val();
+    displayRandomMeals(howMany);
   });
+
+  function getRecipe() {
+    $(document).on("click", ".get-recipe", function () {
+        const button = $(this);
+        button.hide();
+
+        // Replace \r\n with <br> for HTML formatting
+        const formattedInstructions = button.attr("linkTo").replace(/\r\n/g, '<br>');
+
+        const mealInstructions = $("<p>")
+            .addClass("meal-instructions")
+            .html(formattedInstructions)
+            .hide();
+
+        const closeButton = $("<button>")
+            .attr("id", "close-button")
+            .text("Close")
+            .addClass("btn btn-secondary mt-2");
+
+        const mealContainer = button.closest(".meal-container");
+        mealContainer.append(mealInstructions, closeButton);
+
+        // Slide down the meal instructions
+        mealInstructions.slideDown();
+    });
 }
 
-// Call getRecipe function to attach event listener for displaying recipes
 getRecipe();
 
-// Event listener for closing recipe instructions
-document.addEventListener("click", function (event) {
-  if (event.target.id === "close-button") {
-    const closeButton = event.target;
+  $(document).on("click", "#close-button", function () {
+    const closeButton = $(this);
     const mealContainer = closeButton.closest(".meal-container");
-    const mealInstructions = mealContainer.querySelector(".meal-instructions");
+    const mealInstructions = mealContainer.find(".meal-instructions");
 
     mealInstructions.remove();
 
-    const getRecipeButton = mealContainer.querySelector(".get-recipe");
-    if (getRecipeButton) {
-      getRecipeButton.style.display = "block";
+    const getRecipeButton = mealContainer.find(".get-recipe");
+    if (getRecipeButton.length) {
+      getRecipeButton.show();
     }
 
     closeButton.remove();
-  }
+  });
 });
