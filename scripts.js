@@ -72,6 +72,7 @@ $(document).ready(function () {
   recipesButton.on("click", function () {
       const howMany = howManyInput.val();
       displayRandomMeals(howMany);
+      $(howManyInput).val("")
   });
 
   function getRecipe() {
